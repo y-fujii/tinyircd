@@ -124,12 +124,13 @@ class ClientManager( asynchat.async_chat ):
 	
 
 	def found_terminator( self ):
-		(prefix, cmd, args) = Irc.parseMsg( self.iBuf.getvalue() )
-		self.iBuf = StringIO.StringIO()
 		try:
+			(prefix, cmd, args) = Irc.parseMsg( self.iBuf.getvalue() )
 			self.procMsg( prefix, cmd, args )
-		except ValueError:
+		except StandardError:
 			pass
+
+		self.iBuf = StringIO.StringIO()
 	
 	
 	def sendMsg( self, prefix, cmd, args ):
