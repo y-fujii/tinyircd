@@ -29,6 +29,11 @@ class ReParser( object ):
 			return r.group( 1 )
 
 
+def check( cond ):
+	if cond:
+		raise ValueError()
+
+
 def checkStr( ex, s ):
 	if re.match( ex, s ) is None:
 		raise ValueError()
@@ -104,10 +109,6 @@ class Acceptor( asyncore.dispatcher ):
 			pass
 		
 
-class IllegalClient( StandardError ):
-	pass
-
-
 class ClientManager( asynchat.async_chat ):
 
 	def __init__( self, sock, channels ):
@@ -124,23 +125,15 @@ class ClientManager( asynchat.async_chat ):
 
 	def found_terminator( self ):
 		(prefix, cmd, args) = Irc.parseMsg( self.iBuf.getvalue() )
-		print prefix, cmd, args
-		self.procMsg( prefix, cmd, args )
 		self.iBuf = StringIO.StringIO()
+		try:
+			self.procMsg( prefix, cmd, args )
+		except ValueError:
+			pass
 	
 	
 	def sendMsg( self, prefix, cmd, args ):
 		self.push( Irc.buildMsg( prefix, cmd, args ) )
-
-
-	def handle_error( self ):
-		asynchat.async_chat.handle_error( self )
-		self.close()
-
-
-	def check( self, cond ):
-		if not cond:
-			raise IllegalClient()
 
 
 	def close( self ):
@@ -160,8 +153,8 @@ class ClientManager( asynchat.async_chat ):
 
 	def procMsg( self, prefix, cmd, args ):
 		if cmd == "NICK":
-			self.check( self.nick is None )
-			self.check( len( args ) >= 1 )
+			check( self.nick is None )
+			check( len( args ) >= 1 )
 			checkStr( "^[^: ][^ ]*$", args[0] )
 
 			self.nick = args[0]
@@ -169,13 +162,13 @@ class ClientManager( asynchat.async_chat ):
 			self.sendMsg( "server", "376", [ self.nick, "" ] )
 
 		elif cmd == "JOIN":
-			self.check( self.nick is not None )
-			self.check( len( args ) >= 1 )
+			check( self.nick is not None )
+			check( len( args ) >= 1 )
 			checkStr( "^[^: ][^ ]*$", args[0] )
 			ch = args[0]
 
 			if ch in self.channels:
-				self.check( all( cl.nick != self.nick for cl in self.channels[ch] ) )
+				check( all( cl.nick != self.nick for cl in self.channels[ch] ) )
 			else:
 				self.channels[ch] = set()
 
@@ -189,12 +182,12 @@ class ClientManager( asynchat.async_chat ):
 			self.sendMsg( "server", "366", [ self.nick, ch, "" ] )
 
 		elif cmd == "PART":
-			self.check( self.nick is not None )
-			self.check( len( args ) >= 1 )
+			check( self.nick is not None )
+			check( len( args ) >= 1 )
 			checkStr( "^[^: ][^ ]*$", args[0] )
 			ch = args[0]
-			self.check( ch in self.channels )
-			self.check( self in self.channels[ch] )
+			check( ch in self.channels )
+			check( self in self.channels[ch] )
 
 			for cl in self.channels[ch]:
 				cl.sendMsg( self.nick, "PART", [ ch ] )
@@ -207,12 +200,12 @@ class ClientManager( asynchat.async_chat ):
 			self.close()
 
 		elif cmd == "PRIVMSG":
-			self.check( self.nick is not None )
-			self.check( len( args ) == 2 )
+			check( self.nick is not None )
+			check( len( args ) == 2 )
 			checkStr( "^[^: ][^ ]*$", args[0] )
 			ch = args[0]
-			self.check( ch in self.channels )
-			self.check( self in self.channels[ch] )
+			check( ch in self.channels )
+			check( self in self.channels[ch] )
 
 			for cl in self.channels[ch]:
 				if cl != self:
