@@ -30,7 +30,7 @@ class ReParser( object ):
 
 
 def check( cond ):
-	if cond:
+	if not cond:
 		raise ValueError()
 
 
@@ -47,8 +47,7 @@ class Irc( object ):
 
 		prefix = parser.match( ":([^ ]+) " )
 		cmd = parser.match( "([^ ]+)" )
-		if cmd is None:
-			raise ValueError()
+		check( cmd is not None )
 
 		args = []
 		while True:
